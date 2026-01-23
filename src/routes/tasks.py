@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import selectinload, Session
 import json
 from src.models import (
@@ -43,7 +43,6 @@ async def _build_task_response(task: Task, session: Session) -> TaskResponse:
         name=task.name,
         description=task.description,
         cron_expression=task.cron_expression,
-        execution_type=task.execution_type,
         command=task.command,
         is_active=task.is_active,
         timeout=task.timeout,
@@ -55,18 +54,41 @@ async def _build_task_response(task: Task, session: Session) -> TaskResponse:
     )
 
 
-@router.get("/", response_model=List[TaskResponse])
-async def list_tasks(request: Request) -> List[TaskResponse]:
+@router.get("/", response_model=dict)
+async def list_tasks(
+    request: Request,
+    page: int = Query(1, ge=1, description="页码（从1开始）"),
+    page_size: int = Query(20, ge=1, le=200, description="每页数量"),
+) -> dict:
+    """Get task list with pagination support"""
     async for session in db.get_session():
-        result = await session.execute(select(Task))
+        # Get total count
+        count_result = await session.execute(select(func.count()).select_from(Task))
+        total = count_result.scalar()
+
+        # Calculate pagination
+        offset = (page - 1) * page_size
+        total_pages = (total + page_size - 1) // page_size
+
+        # Query paginated data
+        result = await session.execute(select(Task).offset(offset).limit(page_size))
         tasks = result.scalars().all()
-        return [await _build_task_response(t, session) for t in tasks]
+
+        items = [await _build_task_response(t, session) for t in tasks]
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(task_data: TaskSchema, request: Request) -> TaskResponse:
     async for session in db.get_session():
-        # 验证通知配置是否存在
+        # Verify notification configurations exist
         if task_data.notification_ids:
             result = await session.execute(
                 select(Notification).where(
@@ -84,7 +106,6 @@ async def create_task(task_data: TaskSchema, request: Request) -> TaskResponse:
             name=task_data.name,
             description=task_data.description,
             cron_expression=task_data.cron_expression,
-            execution_type=task_data.execution_type.value,
             command=task_data.command,
             is_active=task_data.is_active,
             timeout=task_data.timeout,
@@ -120,19 +141,16 @@ async def update_task(
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
 
-        # 使用 exclude_unset=True 只更新提供的字段
+        # Use exclude_unset=True to only update provided fields
         update_data = task_data.model_dump(
             exclude_unset=True, exclude={"notification_ids"}
         )
         for key, value in update_data.items():
-            if key == "execution_type" and value:
-                setattr(task, key, value.value)
-            else:
-                setattr(task, key, value)
+            setattr(task, key, value)
 
-        # 如果提供了 notification_ids，则更新
+        # Update notification_ids if provided
         if task_data.notification_ids is not None:
-            # 验证通知配置是否存在
+            # Verify notification configurations exist
             if task_data.notification_ids:
                 result = await session.execute(
                     select(Notification).where(
@@ -167,42 +185,9 @@ async def delete_task(task_id: int, request: Request) -> None:
         return None
 
 
-@router.get("/{task_id}/executions", response_model=List[TaskExecutionResponse])
-async def get_task_executions(
-    task_id: int, request: Request
-) -> List[TaskExecutionResponse]:
-    async for session in db.get_session():
-        result = await session.execute(select(Task).where(Task.id == task_id))
-        task = result.scalar_one_or_none()
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-
-        result = await session.execute(
-            select(TaskExecution)
-            .where(TaskExecution.task_id == task_id)
-            .order_by(TaskExecution.started_at.desc())
-            .limit(50)
-        )
-        executions = result.scalars().all()
-
-        return [
-            TaskExecutionResponse(
-                id=e.id,
-                task_id=e.task_id,
-                started_at=e.started_at,
-                finished_at=e.finished_at,
-                status=e.status,
-                output=e.output,
-                error=e.error,
-                retry_attempt=e.retry_attempt,
-            )
-            for e in executions
-        ]
-
-
 @router.post("/{task_id}/cancel", status_code=status.HTTP_200_OK)
 async def cancel_task(task_id: int, request: Request) -> dict:
-    """取消正在运行的任务"""
+    """Cancel a running task"""
     from src.services.scheduler import scheduler
 
     async for session in db.get_session():
@@ -220,7 +205,7 @@ async def cancel_task(task_id: int, request: Request) -> dict:
 
 @router.get("/running/list", response_model=List[int])
 async def list_running_tasks(request: Request) -> List[int]:
-    """获取所有正在运行的任务"""
+    """Get all running tasks"""
     from src.services.scheduler import scheduler
 
     return scheduler.get_running_tasks()

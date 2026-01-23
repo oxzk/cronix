@@ -78,9 +78,6 @@ class Task(Base):
         nullable=False,
         comment="Cron expression (6-field format: second minute hour day month weekday)",
     )
-    execution_type = Column(
-        String(20), nullable=False, comment="Execution type (shell/python/node)"
-    )
     command = Column(Text, nullable=False, comment="Command to execute")
     is_active = Column(Boolean, default=True, comment="Whether task is active")
     timeout = Column(

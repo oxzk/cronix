@@ -16,7 +16,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 @router.get("/2fa", response_model=dict)
 async def get_2fa_info(request: Request) -> dict:
-    """获取2FA配置信息"""
+    """Get 2FA configuration information"""
     async for session in db.get_session():
         current_user = request.state.user
 
@@ -43,7 +43,7 @@ async def get_2fa_info(request: Request) -> dict:
 
 @router.get("/notifications", response_model=dict)
 async def list_notifications(request: Request) -> dict:
-    """获取所有通知配置，按照 notify_type: {id, config} 格式返回"""
+    """Get all notification configurations, returned in notify_type: {id, config} format"""
     async for session in db.get_session():
         result = await session.execute(select(Notification))
         notifications = result.scalars().all()
@@ -54,7 +54,7 @@ async def list_notifications(request: Request) -> dict:
 async def update_notification(
     notification_id: int, notification_data: NotificationSchema, request: Request
 ) -> NotificationResponse:
-    """更新通知配置"""
+    """Update notification configuration"""
     async for session in db.get_session():
         result = await session.execute(
             select(Notification).where(Notification.id == notification_id)
@@ -66,7 +66,7 @@ async def update_notification(
                 detail="Notification not found",
             )
 
-        # 检查notify_type是否与其他配置冲突
+        # Check if notify_type conflicts with other configurations
         if notification_data.notify_type.value != notification.notify_type:
             result = await session.execute(
                 select(Notification).where(
@@ -96,9 +96,9 @@ async def update_notification(
 
 @router.put("/user", response_model=dict)
 async def update_user(user_data: UserSchema, request: Request) -> dict:
-    """更新用户设置（密码、2FA配置）"""
+    """Update user settings (password, 2FA configuration)"""
     async for session in db.get_session():
-        # 从请求中获取当前用户
+        # Get current user from request
         current_user = request.state.user
 
         result = await session.execute(
@@ -112,21 +112,21 @@ async def update_user(user_data: UserSchema, request: Request) -> dict:
 
         updated_fields = []
 
-        # 更新密码
+        # Update password
         if user_data.password is not None:
             user.password = get_password_hash(user_data.password)
             updated_fields.append("password")
 
-        # 更新2FA启用状态
+        # Update 2FA enabled status
         if user_data.is_2fa_enabled is not None:
-            # 如果要启用2FA，必须先设置TOTP密钥并验证
+            # If enabling 2FA, TOTP secret must be set and verified first
             if user_data.is_2fa_enabled:
                 if not user.totp_secret_key:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="TOTP secret must be set before enabling 2FA",
                     )
-                # 验证TOTP code
+                # Verify TOTP code
                 if user_data.totp_code is None:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -137,7 +137,7 @@ async def update_user(user_data: UserSchema, request: Request) -> dict:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Invalid TOTP code",
                     )
-            # 如果要禁用2FA，且当前已启用，需要验证TOTP code
+            # If disabling 2FA and currently enabled, TOTP code verification required
             elif user.is_2fa_enabled:
                 if user_data.totp_code is None:
                     raise HTTPException(

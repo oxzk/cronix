@@ -16,7 +16,7 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/login", response_model=Token)
 async def login(user_data: UserSchema) -> Token:
-    # 验证登录必需字段
+    # Validate required login fields
     if not user_data.username or not user_data.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

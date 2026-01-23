@@ -6,28 +6,28 @@ from src.config import settings
 
 
 class Logger:
-    """统一的日志管理类"""
+    """Unified logging management class"""
 
     def __init__(self):
         self.logger = logging.getLogger("Cronix")
         self.logger.setLevel(logging.DEBUG if settings.app_debug else logging.INFO)
 
-        # 避免重复添加 handler
+        # Avoid adding duplicate handlers
         if not self.logger.handlers:
-            # 控制台输出
+            # Console output
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setLevel(
                 logging.DEBUG if settings.app_debug else logging.INFO
             )
 
-            # 文件输出
-            log_dir = Path("logs")
+            # File output
+            log_dir = Path("data/logs")
             log_dir.mkdir(exist_ok=True)
             log_file = log_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setLevel(logging.ERROR)
 
-            # 格式化
+            # Formatting
             formatter = logging.Formatter(
                 "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 datefmt="%Y-%m-%d %H:%M:%S",
@@ -39,25 +39,25 @@ class Logger:
             self.logger.addHandler(file_handler)
 
     def debug(self, message: str) -> None:
-        """调试信息"""
+        """Debug information"""
         self.logger.debug(message)
 
     def info(self, message: str) -> None:
-        """一般信息"""
+        """General information"""
         self.logger.info(message)
 
     def warning(self, message: str) -> None:
-        """警告信息"""
+        """Warning information"""
         self.logger.warning(message)
 
     def error(self, message: str, exc_info: bool = False) -> None:
-        """错误信息"""
+        """Error information"""
         self.logger.error(message, exc_info=exc_info)
 
     def critical(self, message: str, exc_info: bool = False) -> None:
-        """严重错误"""
+        """Critical error"""
         self.logger.critical(message, exc_info=exc_info)
 
 
-# 全局 logger 实例
+# Global logger instance
 logger = Logger()

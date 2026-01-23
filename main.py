@@ -5,7 +5,13 @@ import asyncio
 import uvicorn
 from src.config import settings
 from src.databases import db
-from src.routes import auth_router, tasks_router, settings_router
+from src.routes import (
+    auth_router,
+    tasks_router,
+    settings_router,
+    executions_router,
+    scripts_router,
+)
 from src.services.scheduler import scheduler
 from src.services.auth import initialize_admin_user
 from src.services.notifiers import initialize_notifications
@@ -43,10 +49,10 @@ app = FastAPI(
 app.add_middleware(AuthMiddleware)
 
 
-# 全局异常处理
+# Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """全局异常处理器"""
+    """Global exception handler"""
     logger.error(
         f"Global exception: {type(exc).__name__}: {str(exc)} - Path: {request.url.path}",
         exc_info=True,
@@ -63,6 +69,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth_router)
 app.include_router(tasks_router)
 app.include_router(settings_router)
+app.include_router(executions_router)
+app.include_router(scripts_router)
 
 
 @app.get("/")

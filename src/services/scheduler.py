@@ -1,10 +1,8 @@
 import asyncio
 import subprocess
-import shutil
-import textwrap
 from datetime import datetime, timezone
 from croniter import croniter
-from typing import Dict, Optional
+from typing import Dict
 import json
 from sqlalchemy import select
 from src.databases import db
@@ -17,19 +15,10 @@ from src.utils import logger
 class TaskScheduler:
     def __init__(self):
         self.running_tasks: Dict[int, asyncio.Task] = {}
-        self.running_processes: Dict[int, subprocess.Popen] = {}  # 存储正在运行的进程
+        self.running_processes: Dict[int, subprocess.Popen] = (
+            {}
+        )  # Store running processes
         self.should_stop = False
-        self._uv_available: Optional[bool] = None
-
-    def _check_uv_available(self) -> bool:
-        """检查 uv 是否可用"""
-        if self._uv_available is None:
-            self._uv_available = shutil.which("uv") is not None
-            if self._uv_available:
-                logger.info("UV detected, will use 'uv python run' for Python tasks")
-            else:
-                logger.info("UV not found, will use 'python' for Python tasks")
-        return self._uv_available
 
     async def start(self) -> None:
         """Start the scheduler"""
@@ -48,12 +37,12 @@ class TaskScheduler:
         logger.info("Scheduler stopped")
 
     async def cancel_task(self, task_id: int) -> bool:
-        """取消正在运行的任务"""
+        """Cancel a running task"""
         if task_id in self.running_tasks:
-            # 取消 asyncio 任务
+            # Cancel asyncio task
             self.running_tasks[task_id].cancel()
 
-            # 终止进程（如果存在）
+            # Terminate process (if exists)
             if task_id in self.running_processes:
                 try:
                     process = self.running_processes[task_id]
@@ -61,12 +50,12 @@ class TaskScheduler:
                     try:
                         process.wait(timeout=5)
                     except subprocess.TimeoutExpired:
-                        process.kill()  # 强制杀死
+                        process.kill()  # Force kill
                     del self.running_processes[task_id]
                 except Exception as e:
                     logger.error(f"Error terminating process for task {task_id}: {e}")
 
-            # 更新执行记录
+            # Update execution record
             try:
                 async for session in db.get_session():
                     result = await session.execute(
@@ -91,7 +80,7 @@ class TaskScheduler:
         return False
 
     def get_running_tasks(self) -> list[int]:
-        """获取所有正在运行的任务 ID"""
+        """Get all running task IDs"""
         return list(self.running_tasks.keys())
 
     async def _schedule_loop(self) -> None:
@@ -125,13 +114,11 @@ class TaskScheduler:
                 logger.error(f"Scheduler error: {e}", exc_info=True)
                 await asyncio.sleep(30)
 
-    def _run_process(
-        self, task: Task, cmd: list | str, shell: bool = False
-    ) -> subprocess.CompletedProcess:
-        """运行进程并管理其生命周期"""
+    def _run_process(self, task: Task) -> subprocess.CompletedProcess:
+        """Run process and manage its lifecycle"""
         process = subprocess.Popen(
-            cmd,
-            shell=shell,
+            task.command,
+            shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -140,7 +127,7 @@ class TaskScheduler:
         try:
             stdout, stderr = process.communicate(timeout=task.timeout)
             return subprocess.CompletedProcess(
-                args=cmd,
+                args=task.command,
                 returncode=process.returncode,
                 stdout=stdout,
                 stderr=stderr,
@@ -149,21 +136,6 @@ class TaskScheduler:
             if task.id in self.running_processes:
                 del self.running_processes[task.id]
 
-    def _get_command(self, task: Task) -> tuple[list | str, bool]:
-        """根据任务类型获取命令和是否使用 shell"""
-        if task.execution_type == "shell":
-            return task.command, True
-        elif task.execution_type == "python":
-            cleaned_command = textwrap.dedent(task.command).strip()
-            if self._check_uv_available():
-                return ["uv", "python", "run", "-c", cleaned_command], False
-            else:
-                return ["python", "-c", cleaned_command], False
-        elif task.execution_type == "node":
-            return ["node", "-e", task.command], False
-        else:
-            raise ValueError(f"Unknown execution type: {task.execution_type}")
-
     async def _update_execution_status(
         self,
         execution_id: int,
@@ -171,7 +143,7 @@ class TaskScheduler:
         output: str = None,
         error: str = None,
     ) -> None:
-        """更新执行记录状态"""
+        """Update execution record status"""
         async for session in db.get_session():
             result = await session.execute(
                 select(TaskExecution).where(TaskExecution.id == execution_id)
@@ -187,7 +159,7 @@ class TaskScheduler:
                 await session.commit()
 
     def _cleanup_process(self, task_id: int) -> None:
-        """清理正在运行的进程"""
+        """Clean up running process"""
         if task_id in self.running_processes:
             try:
                 self.running_processes[task_id].kill()
@@ -196,7 +168,7 @@ class TaskScheduler:
                 pass
 
     async def _handle_retry(self, task: Task, retry_attempt: int, reason: str) -> None:
-        """处理任务重试逻辑"""
+        """Handle task retry logic"""
         if retry_attempt < task.retry_count:
             logger.warning(
                 f"Task {task.id} {reason}, retrying in {task.retry_interval}s "
@@ -250,8 +222,7 @@ class TaskScheduler:
                 execution_id = execution.id
 
             # Execute command
-            cmd, shell = self._get_command(task)
-            proc_result = self._run_process(task, cmd, shell)
+            proc_result = self._run_process(task)
 
             status = (
                 ExecutionStatus.SUCCESS.value
@@ -304,12 +275,12 @@ class TaskScheduler:
             await self._handle_retry(task, retry_attempt, f"error: {e}")
 
     async def _send_notifications(self, task: Task, status: str, output: str) -> None:
-        """发送任务通知"""
+        """Send task notifications"""
         if not task.notification_ids:
-            return  # 没有配置通知，直接返回
+            return  # No notifications configured, return early
 
         async for session in db.get_session():
-            # 获取通知配置详情
+            # Get notification configuration details
             result = await session.execute(
                 select(Notification).where(Notification.id.in_(task.notification_ids))
             )

@@ -4,9 +4,10 @@ from .schemas import (
     TaskSchema,
     TaskResponse,
     TaskExecutionResponse,
+    TaskExecutionDetailResponse,
     NotificationSchema,
     NotificationResponse,
-    ExecutionType,
+    ExecutionStatus,
     NotifyType,
 )
 from .tables import (
@@ -23,9 +24,10 @@ __all__ = [
     "TaskSchema",
     "TaskResponse",
     "TaskExecutionResponse",
+    "TaskExecutionDetailResponse",
     "NotificationSchema",
     "NotificationResponse",
-    "ExecutionType",
+    "ExecutionStatus",
     "NotifyType",
     "User",
     "Task",
