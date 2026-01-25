@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { ButtonHTMLAttributes } from 'react'
 
 const DropdownMenuContext = React.createContext<{
   open: boolean
@@ -9,9 +8,29 @@ const DropdownMenuContext = React.createContext<{
 
 const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
   const [open, setOpen] = React.useState(false)
+  const menuRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open])
+
   return (
     <DropdownMenuContext.Provider value={{ open, setOpen }}>
-      {children}
+      <div ref={menuRef} className="relative inline-block">
+        {children}
+      </div>
     </DropdownMenuContext.Provider>
   )
 }
@@ -24,17 +43,31 @@ interface DropdownMenuTriggerProps {
 
 const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTriggerProps>(
   ({ children, className, asChild }, ref) => {
-    const { open, setOpen } = React.useContext(DropdownMenuContext)!
+    const context = React.useContext(DropdownMenuContext)
+    if (!context) {
+      throw new Error('DropdownMenuTrigger must be used within DropdownMenu')
+    }
+    const { open, setOpen } = context
     
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children, {
-        onClick: () => setOpen(!open),
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation()
+          setOpen(!open)
+        },
         className: cn(className, children.props.className),
       } as any)
     }
     
     return (
-      <button ref={ref} onClick={() => setOpen(!open)} className={className}>
+      <button 
+        ref={ref} 
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(!open)
+        }} 
+        className={className}
+      >
         {children}
       </button>
     )
@@ -49,28 +82,38 @@ interface DropdownMenuContentProps {
 }
 
 const DropdownMenuContent = ({ children, className, align = 'end' }: DropdownMenuContentProps) => {
-  const { open, setOpen } = React.useContext(DropdownMenuContext)!
+  const context = React.useContext(DropdownMenuContext)
+  if (!context) {
+    throw new Error('DropdownMenuContent must be used within DropdownMenu')
+  }
+  const { open } = context
   if (!open) return null
   
   const alignClass = align === 'end' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
   
   return (
-    <div className={cn(`absolute top-full z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md ${alignClass}`, className)}>
+    <div className={cn(`absolute top-full mt-1 z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md ${alignClass}`, className)}>
       {children}
     </div>
   )
 }
 
 const DropdownMenuItem = ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => {
-  const { setOpen } = React.useContext(DropdownMenuContext)!
+  const context = React.useContext(DropdownMenuContext)
+  if (!context) {
+    throw new Error('DropdownMenuItem must be used within DropdownMenu')
+  }
+  const { setOpen } = context
+  
   return (
     <button
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation()
         onClick?.()
         setOpen(false)
       }}
       className={cn(
-        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
     >

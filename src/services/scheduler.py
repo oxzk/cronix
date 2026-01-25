@@ -156,7 +156,26 @@ class TaskScheduler:
                     execution.output = output
                 if error is not None:
                     execution.error = error
+                # Calculate duration in seconds
+                if execution.started_at:
+                    duration = (
+                        execution.finished_at - execution.started_at
+                    ).total_seconds()
+                    execution.duration = int(duration)
                 await session.commit()
+
+    async def _update_next_run_time(self, task_id: int, cron_expression: str) -> None:
+        """Update task's next run time"""
+        try:
+            async for session in db.get_session():
+                result = await session.execute(select(Task).where(Task.id == task_id))
+                task = result.scalar_one_or_none()
+                if task:
+                    cron = croniter(cron_expression, datetime.now(timezone.utc))
+                    task.next_run_time = cron.get_next(datetime)
+                    await session.commit()
+        except Exception as e:
+            logger.error(f"Error updating next_run_time for task {task_id}: {e}")
 
     def _cleanup_process(self, task_id: int) -> None:
         """Clean up running process"""
@@ -230,10 +249,14 @@ class TaskScheduler:
                 else ExecutionStatus.FAILED.value
             )
 
-            # Update execution record
+            # Update execution record and next_run_time
             await self._update_execution_status(
                 execution_id, status, proc_result.stdout, proc_result.stderr
             )
+
+            # Update next_run_time after successful execution
+            if status == ExecutionStatus.SUCCESS.value:
+                await self._update_next_run_time(task.id, task.cron_expression)
 
             # Retry logic if failed
             if (

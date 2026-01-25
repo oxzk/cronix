@@ -15,7 +15,6 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = "Cronix"
-    app_port: int = 8000
     app_debug: bool = False
 
 

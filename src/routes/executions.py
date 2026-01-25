@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi import APIRouter, Depends, Request, Query
 from typing import List, Optional
 from sqlalchemy import select, func
 from src.models import (
@@ -13,17 +13,18 @@ from src.models import (
     TaskResponse,
 )
 from src.databases import db
+from src.utils import success_response, error_response
 
 router = APIRouter(prefix="/executions", tags=["executions"])
 
 
-@router.get("/", response_model=dict)
+@router.get("")
 async def list_executions(
     request: Request,
-    task_id: Optional[int] = Query(None, description="按任务ID筛选"),
-    status: Optional[ExecutionStatus] = Query(None, description="按状态筛选"),
-    page: int = Query(1, ge=1, description="页码（从1开始）"),
-    page_size: int = Query(20, ge=1, le=200, description="每页数量"),
+    task_id: Optional[int] = Query(None, description="Filter by task ID"),
+    status: Optional[ExecutionStatus] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number (starting from 1)"),
+    page_size: int = Query(20, ge=1, le=200, description="Items per page"),
 ) -> dict:
     """Get task execution history with multi-condition filtering and pagination support"""
     async for session in db.get_session():
@@ -56,33 +57,62 @@ async def list_executions(
         result = await session.execute(query)
         executions = result.scalars().all()
 
-        items = [
-            TaskExecutionResponse(
-                id=e.id,
-                task_id=e.task_id,
-                started_at=e.started_at,
-                finished_at=e.finished_at,
-                status=e.status,
-                output=e.output,
-                error=e.error,
-                retry_attempt=e.retry_attempt,
+        # Get all unique task IDs
+        task_ids = list(set(e.task_id for e in executions))
+
+        # Fetch all related tasks in one query
+        tasks_result = await session.execute(select(Task).where(Task.id.in_(task_ids)))
+        tasks = {task.id: task for task in tasks_result.scalars().all()}
+
+        # Build response with task information
+        items = []
+        for e in executions:
+            task = tasks.get(e.task_id)
+            task_response = None
+            if task:
+                task_response = TaskResponse(
+                    id=task.id,
+                    name=task.name,
+                    description=task.description,
+                    cron_expression=task.cron_expression,
+                    command=task.command,
+                    is_active=task.is_active,
+                    timeout=task.timeout,
+                    retry_count=task.retry_count,
+                    retry_interval=task.retry_interval,
+                    next_run_time=task.next_run_time,
+                    created_at=task.created_at,
+                    updated_at=task.updated_at,
+                )
+
+            items.append(
+                TaskExecutionDetailResponse(
+                    id=e.id,
+                    task_id=e.task_id,
+                    task=task_response,
+                    started_at=e.started_at,
+                    finished_at=e.finished_at,
+                    status=e.status,
+                    output=None,  # Don't include output in list view
+                    error=None,  # Don't include error in list view
+                    retry_attempt=e.retry_attempt,
+                    duration=e.duration,
+                )
             )
-            for e in executions
-        ]
 
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-        }
+        return success_response(
+            data={
+                "items": items,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+            }
+        )
 
 
-@router.get("/{execution_id}", response_model=TaskExecutionDetailResponse)
-async def get_execution(
-    execution_id: int, request: Request
-) -> TaskExecutionDetailResponse:
+@router.get("/{execution_id}")
+async def get_execution(execution_id: int, request: Request) -> dict:
     """Get single execution record details (including associated task information)"""
     async for session in db.get_session():
         result = await session.execute(
@@ -90,10 +120,7 @@ async def get_execution(
         )
         execution = result.scalar_one_or_none()
         if not execution:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Execution not found",
-            )
+            return error_response(message="Execution not found", code=404)
 
         # Get associated task information
         task_result = await session.execute(
@@ -113,11 +140,12 @@ async def get_execution(
                 timeout=task.timeout,
                 retry_count=task.retry_count,
                 retry_interval=task.retry_interval,
+                next_run_time=task.next_run_time,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
             )
 
-        return TaskExecutionDetailResponse(
+        execution_detail = TaskExecutionDetailResponse(
             id=execution.id,
             task_id=execution.task_id,
             task=task_response,
@@ -127,4 +155,7 @@ async def get_execution(
             output=execution.output,
             error=execution.error,
             retry_attempt=execution.retry_attempt,
+            duration=execution.duration,
         )
+
+        return success_response(data=execution_detail)

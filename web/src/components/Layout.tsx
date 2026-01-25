@@ -14,6 +14,9 @@ import {
   UserCog,
   ChevronDown,
   FolderKanban,
+  PlayCircle,
+  FileCode,
+  ListChecks,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -33,42 +36,22 @@ const menuItems: MenuItem[] = [
     path: '/',
   },
   {
-    id: 'users',
-    label: '用户管理',
-    icon: <Users className="h-5 w-5" />,
-    children: [
-      {
-        id: 'users-list',
-        label: '用户列表',
-        icon: <Users className="h-5 w-5" />,
-        path: '/users',
-      },
-      {
-        id: 'user-settings',
-        label: '用户设置',
-        icon: <UserCog className="h-5 w-5" />,
-        path: '/users/settings',
-      },
-    ],
+    id: 'tasks',
+    label: '任务管理',
+    icon: <PlayCircle className="h-5 w-5" />,
+    path: '/tasks',
   },
   {
-    id: 'projects',
-    label: '项目管理',
-    icon: <FolderKanban className="h-5 w-5" />,
-    children: [
-      {
-        id: 'projects-list',
-        label: '项目列表',
-        icon: <FolderKanban className="h-5 w-5" />,
-        path: '/projects',
-      },
-      {
-        id: 'projects-archive',
-        label: '项目归档',
-        icon: <FolderKanban className="h-5 w-5" />,
-        path: '/projects/archive',
-      },
-    ],
+    id: 'executions',
+    label: '执行记录',
+    icon: <ListChecks className="h-5 w-5" />,
+    path: '/executions',
+  },
+  {
+    id: 'scripts',
+    label: '脚本管理',
+    icon: <FileCode className="h-5 w-5" />,
+    path: '/scripts',
   },
   {
     id: 'settings',
@@ -231,6 +214,7 @@ export default function Layout() {
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated')
+    localStorage.removeItem('auth_token')
     window.dispatchEvent(new Event('authChange'))
     navigate('/login')
   }

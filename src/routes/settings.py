@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, Request
 import pyotp
 from sqlalchemy import select
 from src.models import (
@@ -10,11 +10,12 @@ from src.models import (
 )
 from src.databases import db
 from src.services import get_password_hash, verify_totp
+from src.utils import success_response, error_response
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
-@router.get("/2fa", response_model=dict)
+@router.get("/2fa")
 async def get_2fa_info(request: Request) -> dict:
     """Get 2FA configuration information"""
     async for session in db.get_session():
@@ -25,35 +26,36 @@ async def get_2fa_info(request: Request) -> dict:
         )
         user: User | None = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            return error_response(message="User not found", code=404)
 
         secret = user.totp_secret_key or pyotp.random_base32()
         totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
             name=user.username, issuer_name="Cronix"
         )
 
-        return {
-            "totp_secret_key": secret,
-            "totp_uri": totp_uri,
-            "is_2fa_enabled": user.is_2fa_enabled,
-        }
+        return success_response(
+            data={
+                "totp_secret_key": secret,
+                "totp_uri": totp_uri,
+                "is_2fa_enabled": user.is_2fa_enabled,
+            }
+        )
 
 
-@router.get("/notifications", response_model=dict)
+@router.get("/notifications")
 async def list_notifications(request: Request) -> dict:
     """Get all notification configurations, returned in notify_type: {id, config} format"""
     async for session in db.get_session():
         result = await session.execute(select(Notification))
         notifications = result.scalars().all()
-        return {n.notify_type: {"id": n.id, **n.config} for n in notifications}
+        data = {n.notify_type: {"id": n.id, **n.config} for n in notifications}
+        return success_response(data=data)
 
 
-@router.put("/notifications/{notification_id}", response_model=NotificationResponse)
+@router.put("/notifications/{notification_id}")
 async def update_notification(
     notification_id: int, notification_data: NotificationSchema, request: Request
-) -> NotificationResponse:
+) -> dict:
     """Update notification configuration"""
     async for session in db.get_session():
         result = await session.execute(
@@ -61,10 +63,7 @@ async def update_notification(
         )
         notification = result.scalar_one_or_none()
         if not notification:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Notification not found",
-            )
+            return error_response(message="Notification not found", code=404)
 
         # Check if notify_type conflicts with other configurations
         if notification_data.notify_type.value != notification.notify_type:
@@ -74,9 +73,8 @@ async def update_notification(
                 )
             )
             if result.scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Notification with this type already exists",
+                return error_response(
+                    message="Notification with this type already exists", code=400
                 )
 
         notification.notify_type = notification_data.notify_type.value
@@ -85,7 +83,7 @@ async def update_notification(
         await session.commit()
         await session.refresh(notification)
 
-        return NotificationResponse(
+        notification_response = NotificationResponse(
             id=notification.id,
             notify_type=notification.notify_type,
             config=notification.config,
@@ -93,8 +91,12 @@ async def update_notification(
             updated_at=notification.updated_at,
         )
 
+        return success_response(
+            data=notification_response, message="Notification updated successfully"
+        )
 
-@router.put("/user", response_model=dict)
+
+@router.put("/user")
 async def update_user(user_data: UserSchema, request: Request) -> dict:
     """Update user settings (password, 2FA configuration)"""
     async for session in db.get_session():
@@ -106,9 +108,7 @@ async def update_user(user_data: UserSchema, request: Request) -> dict:
         )
         user: User | None = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+            return error_response(message="User not found", code=404)
 
         updated_fields = []
 
@@ -122,46 +122,34 @@ async def update_user(user_data: UserSchema, request: Request) -> dict:
             # If enabling 2FA, TOTP secret must be set and verified first
             if user_data.is_2fa_enabled:
                 if not user.totp_secret_key:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="TOTP secret must be set before enabling 2FA",
+                    return error_response(
+                        message="TOTP secret must be set before enabling 2FA", code=400
                     )
                 # Verify TOTP code
                 if user_data.totp_code is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="TOTP code is required to enable 2FA",
+                    return error_response(
+                        message="TOTP code is required to enable 2FA", code=400
                     )
                 if not verify_totp(user.totp_secret_key, user_data.totp_code):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Invalid TOTP code",
-                    )
+                    return error_response(message="Invalid TOTP code", code=400)
             # If disabling 2FA and currently enabled, TOTP code verification required
             elif user.is_2fa_enabled:
                 if user_data.totp_code is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="TOTP code is required to disable 2FA",
+                    return error_response(
+                        message="TOTP code is required to disable 2FA", code=400
                     )
                 if not verify_totp(user.totp_secret_key, user_data.totp_code):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Invalid TOTP code",
-                    )
+                    return error_response(message="Invalid TOTP code", code=400)
 
             user.is_2fa_enabled = user_data.is_2fa_enabled
             updated_fields.append("is_2fa_enabled")
 
         if not updated_fields:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No fields to update",
-            )
+            return error_response(message="No fields to update", code=400)
 
         await session.commit()
 
-        return {
-            "message": "User settings updated successfully",
-            "updated_fields": updated_fields,
-        }
+        return success_response(
+            data={"updated_fields": updated_fields},
+            message="User settings updated successfully",
+        )

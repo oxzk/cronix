@@ -104,11 +104,11 @@ class TaskSchema(BaseModel):
     @field_validator("cron_expression")
     @classmethod
     def validate_cron_expression(cls, v: str) -> str:
-        """Validate cron expression, supports 6-field format (second minute hour day month weekday)"""
+        """Validate cron expression, supports standard 5-field format (minute hour day month weekday)"""
         parts = v.strip().split()
-        if len(parts) != 6:
+        if len(parts) != 5:
             raise ValueError(
-                "Cron expression must have 6 fields: second minute hour day month weekday"
+                "Cron expression must have 5 fields: minute hour day month weekday"
             )
         try:
             # Use croniter to validate expression validity
@@ -131,6 +131,7 @@ class TaskResponse(BaseModel):
     notifications: Optional[List[NotificationResponse]] = (
         None  # Associated notification configurations
     )
+    next_run_time: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -144,6 +145,7 @@ class TaskExecutionResponse(BaseModel):
     output: Optional[str]
     error: Optional[str]
     retry_attempt: int
+    duration: Optional[int] = None
 
 
 class TaskExecutionDetailResponse(BaseModel):
@@ -156,3 +158,4 @@ class TaskExecutionDetailResponse(BaseModel):
     output: Optional[str]
     error: Optional[str]
     retry_attempt: int
+    duration: Optional[int] = None

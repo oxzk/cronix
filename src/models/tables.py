@@ -76,7 +76,7 @@ class Task(Base):
     cron_expression = Column(
         String(100),
         nullable=False,
-        comment="Cron expression (6-field format: second minute hour day month weekday)",
+        comment="Cron expression (5-field format: minute hour day month weekday)",
     )
     command = Column(Text, nullable=False, comment="Command to execute")
     is_active = Column(Boolean, default=True, comment="Whether task is active")
@@ -99,6 +99,11 @@ class Task(Base):
         ARRAY(Integer),
         nullable=True,
         comment="List of notification IDs (null = no notifications)",
+    )
+    next_run_time = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        comment="Next scheduled execution time",
     )
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -141,6 +146,11 @@ class TaskExecution(Base):
     error = Column(Text, comment="Error message")
     retry_attempt = Column(
         Integer, default=0, nullable=False, comment="Current retry attempt number"
+    )
+    duration = Column(
+        Integer,
+        nullable=True,
+        comment="Execution duration in seconds",
     )
 
     __table_args__ = (

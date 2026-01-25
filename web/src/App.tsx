@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
+import Tasks from './pages/Tasks'
+import Executions from './pages/Executions'
+import Scripts from './pages/Scripts'
+import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
 function App() {
@@ -33,6 +37,10 @@ function App() {
         <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
           <Route index element={<Dashboard />} />
           <Route path="users" element={<Users />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="executions" element={<Executions />} />
+          <Route path="scripts" element={<Scripts />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </Router>

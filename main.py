@@ -1,5 +1,8 @@
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import asyncio
 import uvicorn
@@ -15,8 +18,9 @@ from src.routes import (
 from src.services.scheduler import scheduler
 from src.services.auth import initialize_admin_user
 from src.services.notifiers import initialize_notifications
-from src.utils import logger
+from src.utils import logger, error_response, success_response
 from src.middleware import AuthMiddleware
+from src import __version__
 
 
 @asynccontextmanager
@@ -42,52 +46,104 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.app_name, lifespan=lifespan, docs_url=None, openapi_url=None
+    title=settings.app_name,
+    lifespan=lifespan,
+    docs_url=None,
+    openapi_url=None,
+    redirect_slashes=False,
+    debug=settings.app_debug,
+    version=__version__,
+)
+
+# Add CORS middleware first
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add authentication middleware
 app.add_middleware(AuthMiddleware)
 
 
-# Global exception handler
+# Global exception handler for all exceptions
+@app.exception_handler(RequestValidationError)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler"""
+    """Unified exception handler for all exceptions"""
+
+    # Handle validation errors
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=error_response(
+                message="Validation error", code=422, data={"errors": exc.errors()}
+            ),
+        )
+
+    # Handle all other exceptions
     logger.error(
-        f"Global exception: {type(exc).__name__}: {str(exc)} - Path: {request.url.path}",
+        f"Unhandled exception: {type(exc).__name__}: {str(exc)} - Path: {request.url.path}",
         exc_info=True,
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "Internal server error",
-            "error": str(exc) if settings.app_debug else "An unexpected error occurred",
-        },
+        content=error_response(
+            message="Internal server error",
+            code=500,
+            data={
+                "error": (
+                    str(exc) if settings.app_debug else "An unexpected error occurred"
+                )
+            },
+        ),
     )
 
 
-app.include_router(auth_router)
-app.include_router(tasks_router)
-app.include_router(settings_router)
-app.include_router(executions_router)
-app.include_router(scripts_router)
+for router in [
+    auth_router,
+    tasks_router,
+    settings_router,
+    executions_router,
+    scripts_router,
+]:
+    app.include_router(router, prefix="/api")
 
 
-@app.get("/")
-def root() -> dict:
-    from src import __version__
-
-    return {
-        "name": settings.app_name,
-        "version": __version__,
-        "status": "running",
-    }
+@app.get("/robots.txt")
+async def robots_file():
+    return PlainTextResponse("User-agent: *\nDisallow: /")
 
 
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=settings.app_port,
-        reload=settings.app_debug,
+@app.get("/info")
+async def info(request: Request):
+    headers = {key: value for key, value in request.headers.items()}
+    client_host = request.client.host if request.client else None
+    client_port = request.client.port if request.client else None
+
+    return success_response(
+        data={
+            "client": {
+                "host": client_host,
+                "port": client_port,
+            },
+            "url": str(request.url),
+            "base_url": str(request.base_url),
+            "headers": headers,
+        }
+    )
+
+
+@app.get("/health")
+def health() -> dict:
+
+    return success_response(
+        data={
+            "name": settings.app_name,
+            "version": __version__,
+            "status": "running",
+        }
     )

@@ -5,23 +5,30 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 import { ChevronLeft } from 'lucide-react'
+import { login, saveToken } from '../api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [totpCode, setTotpCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
-    // 模拟登录
-    setTimeout(() => {
-      localStorage.setItem('isAuthenticated', 'true')
-      window.dispatchEvent(new Event('authChange'))
+    setError('')
+
+    try {
+      const token = await login({ username, password, totp_code: totpCode || undefined })
+      saveToken(token.access_token)
       navigate('/')
-    }, 1000)
+    } catch (err: any) {
+      setError(err.message || '登录失败，请检查用户名和密码')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -47,16 +54,21 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                邮箱地址
+              <Label htmlFor="username" className="text-sm font-medium">
+                用户名
               </Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="h-11"
               />
@@ -75,14 +87,18 @@ export default function Login() {
                 className="h-11"
               />
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-input" />
-                <span className="text-muted-foreground">记住我</span>
-              </label>
-              <a href="#" className="text-primary hover:underline">
-                忘记密码？
-              </a>
+            <div className="space-y-2">
+              <Label htmlFor="totp" className="text-sm font-medium">
+                2FA 验证码（可选）
+              </Label>
+              <Input
+                id="totp"
+                type="text"
+                placeholder="如果您启用了 2FA，请输入验证码"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                className="h-11"
+              />
             </div>
             <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
               {isLoading ? '登录中...' : '登录'}
