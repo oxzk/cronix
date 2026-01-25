@@ -1,11 +1,14 @@
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import asyncio
 import uvicorn
+import os
+from pathlib import Path
 from src.config import settings
 from src.databases import db
 from src.routes import (
@@ -147,3 +150,16 @@ def health() -> dict:
             "status": "running",
         }
     )
+
+
+app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
+
+
+@app.get("/")
+def index():
+    return FileResponse("public/index.html")
+
+
+@app.get("/{path:path}")
+def spa(path: str):
+    return FileResponse("public/index.html")

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog'
-import { Select } from '../components/ui/select'
-import { ConfirmDialog } from '../components/ui/confirm-dialog'
+import { 
+  Card, CardContent, CardHeader, CardTitle,
+  Button, Input, Label,
+  LoadingSpinner, PageHeader,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '../lib/components'
+import { SimpleSelect as Select } from '../lib/simple-wrappers'
+import { ConfirmDialog } from '../lib/simple-wrappers'
 import { Plus } from 'lucide-react'
-import { ScriptTreeView } from '../components/ui/ScriptTreeView'
-import { CodeEditor } from '../components/ui/CodeEditor'
+import { ScriptTreeView } from '../components/ScriptTreeView'
+import { CodeEditor } from '../components/CodeEditor'
 import { getScripts, deleteScript, createScript, updateScript, getScript, type ScriptTreeNode, type ScriptSchema, type ScriptResponse, ScriptType } from '../api'
-import { message } from '../components/ui/message'
+import { message } from '../lib/message'
 
 export default function Scripts() {
   const [nodes, setNodes] = useState<ScriptTreeNode[]>([])
@@ -166,102 +167,103 @@ export default function Scripts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">脚本管理</h1>
-          <p className="text-muted-foreground mt-1">
-            管理执行脚本文件
-          </p>
-        </div>
-        <Button className="gap-2" onClick={handleAddScript}>
-          <Plus className="h-4 w-4" />
-          添加脚本
-        </Button>
-      </div>
+      <PageHeader 
+        title="脚本管理" 
+        description="管理执行脚本文件"
+        action={
+          <Button className="gap-2" onClick={handleAddScript}>
+            <Plus className="h-4 w-4" />
+            添加脚本
+          </Button>
+        }
+      />
 
       <Dialog
         open={showDialog}
-        onClose={handleCancel}
-        title={dialogMode === 'add' ? '添加新脚本' : '编辑脚本'}
-        maxWidth="4xl"
+        onOpenChange={(open) => !open && handleCancel()}
       >
-        <DialogContent>
-          <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === 'add' ? '添加新脚本' : '编辑脚本'}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="script-name">脚本名称 {dialogMode === 'add' && <span className="text-red-500">*</span>}</Label>
+                <Input
+                  id="script-name"
+                  placeholder="输入脚本名称（如：my_script.py）"
+                  value={scriptForm.name || ''}
+                  onChange={(e) => {
+                    setScriptForm({ ...scriptForm, name: e.target.value })
+                    if (validationErrors.name) {
+                      setValidationErrors({ ...validationErrors, name: false })
+                    }
+                  }}
+                  disabled={dialogMode === 'edit'}
+                  className={validationErrors.name ? 'border-red-500' : ''}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="script-type">脚本类型 {dialogMode === 'add' && <span className="text-red-500">*</span>}</Label>
+                <Select
+                  id="script-type"
+                  options={[
+                    { value: ScriptType.PYTHON, label: 'Python' },
+                    { value: ScriptType.NODE, label: 'Node.js' },
+                    { value: ScriptType.SHELL, label: 'Shell' },
+                  ]}
+                  value={scriptForm.type || ScriptType.PYTHON}
+                  onChange={(value) => setScriptForm({ ...scriptForm, type: value as ScriptType })}
+                  disabled={dialogMode === 'edit'}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="script-name">脚本名称 {dialogMode === 'add' && <span className="text-red-500">*</span>}</Label>
-              <Input
-                id="script-name"
-                placeholder="输入脚本名称（如：my_script.py）"
-                value={scriptForm.name || ''}
-                onChange={(e) => {
-                  setScriptForm({ ...scriptForm, name: e.target.value })
-                  if (validationErrors.name) {
-                    setValidationErrors({ ...validationErrors, name: false })
+              <Label htmlFor="script-content">脚本内容 <span className="text-red-500">*</span></Label>
+              <CodeEditor
+                value={scriptForm.content || ''}
+                onChange={(value) => {
+                  setScriptForm({ ...scriptForm, content: value || '' })
+                  if (validationErrors.content) {
+                    setValidationErrors({ ...validationErrors, content: false })
                   }
                 }}
-                disabled={dialogMode === 'edit'}
-                className={validationErrors.name ? 'border-red-500' : ''}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="script-type">脚本类型 {dialogMode === 'add' && <span className="text-red-500">*</span>}</Label>
-              <Select
-                id="script-type"
-                options={[
-                  { value: ScriptType.PYTHON, label: 'Python' },
-                  { value: ScriptType.NODE, label: 'Node.js' },
-                  { value: ScriptType.SHELL, label: 'Shell' },
-                ]}
-                value={scriptForm.type || ScriptType.PYTHON}
-                onChange={(e) => setScriptForm({ ...scriptForm, type: e.target.value as ScriptType })}
-                disabled={dialogMode === 'edit'}
+                language={scriptForm.type === ScriptType.PYTHON ? 'python' : scriptForm.type === ScriptType.NODE ? 'javascript' : 'shell'}
+                height="300px"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="script-content">脚本内容 <span className="text-red-500">*</span></Label>
-            <CodeEditor
-              value={scriptForm.content || ''}
-              onChange={(value) => {
-                setScriptForm({ ...scriptForm, content: value || '' })
-                if (validationErrors.content) {
-                  setValidationErrors({ ...validationErrors, content: false })
-                }
-              }}
-              language={scriptForm.type === ScriptType.PYTHON ? 'python' : scriptForm.type === ScriptType.NODE ? 'javascript' : 'shell'}
-              height="300px"
-            />
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel} disabled={saving}>
+              取消
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  保存中...
+                </>
+              ) : (
+                dialogMode === 'add' ? '保存脚本' : '更新脚本'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={saving}>
-            取消
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                保存中...
-              </>
-            ) : (
-              dialogMode === 'add' ? '保存脚本' : '更新脚本'
-            )}
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       <ConfirmDialog
         open={showDeleteDialog}
-        onClose={handleDeleteCancel}
+        onOpenChange={(open) => !open && handleDeleteCancel()}
         onConfirm={handleDeleteConfirm}
         title="确认删除"
-        message={`确定要删除脚本 ${deletingScriptName} 吗？`}
+        description={`确定要删除脚本 ${deletingScriptName} 吗？`}
         confirmText="删除"
         cancelText="取消"
-        loading={deleting}
       />
 
       <Card>
@@ -269,11 +271,7 @@ export default function Scripts() {
           <CardTitle>脚本列表</CardTitle>
         </CardHeader>
         <CardContent className="relative overflow-visible">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-          ) : (
+          {loading ? <LoadingSpinner /> : (
             <ScriptTreeView
               nodes={nodes}
               onEdit={handleEditScript}

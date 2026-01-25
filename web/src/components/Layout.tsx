@@ -1,24 +1,19 @@
 import { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Button } from './ui/button'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Button } from '../lib/components'
 import { ThemeToggle } from './theme-toggle'
 import {
   LayoutDashboard,
-  Users,
   Settings,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Menu,
-  Home,
-  UserCog,
   ChevronDown,
-  FolderKanban,
   PlayCircle,
   FileCode,
   ListChecks,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 
 interface MenuItem {
   id: string
@@ -64,9 +59,11 @@ const menuItems: MenuItem[] = [
 interface SidebarProps {
   isCollapsed: boolean
   onToggle: () => void
+  isMobileOpen: boolean
+  onMobileClose: () => void
 }
 
-function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
   const location = useLocation()
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
@@ -85,6 +82,17 @@ function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     return location.pathname === path
   }
 
+  const handleLinkClick = (e: React.MouseEvent, item: MenuItem) => {
+    const hasChildren = item.children && item.children.length > 0
+    if (hasChildren) {
+      e.preventDefault()
+      toggleExpand(item.id)
+    } else {
+      // 移动端点击后关闭菜单
+      onMobileClose()
+    }
+  }
+
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
     const hasChildren = item.children && item.children.length > 0
     const isExpanded = expandedItems.has(item.id)
@@ -93,12 +101,7 @@ function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       <div key={item.id}>
         <Link
           to={item.path || '#'}
-          onClick={(e) => {
-            if (hasChildren) {
-              e.preventDefault()
-              toggleExpand(item.id)
-            }
-          }}
+          onClick={(e) => handleLinkClick(e, item)}
           className={`
             flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
             ${isActive(item.path) 
@@ -130,71 +133,78 @@ function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   }
 
   return (
-    <aside
-      className={`
-        fixed left-0 top-0 h-screen bg-card border-r border-border
-        transition-all duration-300 ease-in-out z-50
-        ${isCollapsed ? 'w-16' : 'w-64'}
-      `}
-    >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+    <>
+      {/* 移动端遮罩层 */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+      
+      {/* 侧边栏 */}
+      <aside
+        className={`
+          fixed left-0 top-0 h-screen bg-card border-r border-border
+          transition-all duration-300 ease-in-out z-50
+          ${isCollapsed ? 'w-16' : 'w-64'}
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-md">
+                <svg className="w-5 h-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              {!isCollapsed && (
+                <span className="font-bold text-lg">管理后台</span>
+              )}
             </div>
-            {!isCollapsed && (
-              <span className="font-bold text-lg">管理后台</span>
-            )}
+          </div>
+
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            {menuItems.map((item) => renderMenuItem(item))}
+          </nav>
+
+          <div className="p-3 border-t border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className={`hidden lg:flex ${isCollapsed ? 'w-full justify-center' : 'w-full justify-start'}`}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-5 w-5 mr-2" />
+                  <span>收起菜单</span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
-
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => renderMenuItem(item))}
-        </nav>
-
-        <div className="p-3 border-t border-border">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className={isCollapsed ? 'w-full justify-center' : 'w-full justify-start'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <>
-                <ChevronLeft className="h-5 w-5 mr-2" />
-                <span>收起菜单</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 
 interface HeaderProps {
   onLogout: () => void
+  onMenuToggle: () => void
 }
 
-function Header({ onLogout }: HeaderProps) {
+function Header({ onLogout, onMenuToggle }: HeaderProps) {
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
       <div className="h-full px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="lg:hidden">
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
             <Menu className="h-5 w-5" />
           </Button>
-          <nav className="hidden sm:flex items-center gap-2 text-sm">
-            <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors">
-              <Home className="h-4 w-4" />
-              <span>首页</span>
-            </Link>
-          </nav>
         </div>
 
         <div className="flex items-center gap-3">
@@ -210,6 +220,7 @@ function Header({ onLogout }: HeaderProps) {
 
 export default function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -223,15 +234,20 @@ export default function Layout() {
     <div className="min-h-screen bg-background">
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isMobileOpen={isMobileMenuOpen}
+        onMobileClose={() => setIsMobileMenuOpen(false)}
       />
       <main
         className={`
           transition-all duration-300 ease-in-out
-          ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}
+          ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}
         `}
       >
-        <Header onLogout={handleLogout} />
+        <Header 
+          onLogout={handleLogout}
+          onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        />
         <div className="p-6">
           <Outlet />
         </div>

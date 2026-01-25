@@ -1,25 +1,26 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
-import { Select } from '../components/ui/select'
-import { Tooltip } from '../components/ui/tooltip'
-import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog'
-import { Pagination } from '../components/ui/pagination'
-import { ConfirmDialog } from '../components/ui/confirm-dialog'
+import { 
+  Card, CardContent, CardHeader, CardTitle,
+  Button, Input, Label,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Pagination, LoadingSpinner, EmptyState, PageHeader,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '../lib/components'
+import { SimpleSelect as Select } from '../lib/simple-wrappers'
+import { SimpleTooltip as Tooltip } from '../lib/simple-wrappers'
+import { ConfirmDialog } from '../lib/simple-wrappers'
 import { Search, Plus, Trash2, Edit, Play } from 'lucide-react'
 import { getTasks, deleteTask, createTask, updateTask, getTask, executeTask, type TaskResponse, type TaskSchema } from '../api'
 import { useDialog, useForm, usePagination, useAsync } from '../hooks'
+import { formatDate } from '../utils/format'
 
 export default function Tasks() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<boolean | ''>('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   
   const filters = {
     ...(searchQuery && { name: searchQuery }),
-    ...(statusFilter !== '' && { is_active: statusFilter }),
+    ...(statusFilter !== 'all' && { is_active: statusFilter === 'true' }),
   }
   
   const { data: tasks, loading, currentPage, totalPages, setCurrentPage } = usePagination<TaskResponse>(getTasks, 20, filters)
@@ -120,148 +121,147 @@ export default function Tasks() {
     )
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN')
-  }
+
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">任务管理</h1>
-          <p className="text-muted-foreground mt-1">
-            管理定时任务和执行计划
-          </p>
-        </div>
-        <Button className="gap-2" onClick={handleAdd}>
-          <Plus className="h-4 w-4" />
-          添加任务
-        </Button>
-      </div>
+      <PageHeader 
+        title="任务管理" 
+        description="管理定时任务和执行计划"
+        action={
+          <Button className="gap-2" onClick={handleAdd}>
+            <Plus className="h-4 w-4" />
+            添加任务
+          </Button>
+        }
+      />
 
       <Dialog 
         open={formDialog.open} 
-        onClose={formDialog.closeDialog} 
-        title={formDialog.data ? '编辑任务' : '添加新任务'} 
-        maxWidth="4xl"
+        onOpenChange={formDialog.closeDialog}
       >
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{formDialog.data ? '编辑任务' : '添加新任务'}</DialogTitle>
+          </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="task-name">任务名称 <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="task-name"
-                      placeholder="输入任务名称"
-                      value={form.values.name || ''}
-                      onChange={(e) => form.updateValue('name', e.target.value)}
-                      className={form.errors.name ? 'border-red-500' : ''}
-                      disabled={!!formDialog.data}
-                    />
-                    {formDialog.data && (
-                      <p className="text-xs text-muted-foreground">任务名称不可修改</p>
-                    )}
-                  </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="task-name">任务名称 <span className="text-red-500">*</span></Label>
+                <Input
+                  id="task-name"
+                  placeholder="输入任务名称"
+                  value={form.values.name || ''}
+                  onChange={(e) => form.updateValue('name', e.target.value)}
+                  className={form.errors.name ? 'border-red-500' : ''}
+                  disabled={!!formDialog.data}
+                />
+                {formDialog.data && (
+                  <p className="text-xs text-muted-foreground">任务名称不可修改</p>
+                )}
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="cron-expression">Cron 表达式 <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="cron-expression"
-                      placeholder="如: */5 * * * * (每5分钟)"
-                      value={form.values.cron_expression || ''}
-                      onChange={(e) => form.updateValue('cron_expression', e.target.value)}
-                      className={form.errors.cron_expression ? 'border-red-500' : ''}
-                    />
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="cron-expression">Cron 表达式 <span className="text-red-500">*</span></Label>
+                <Input
+                  id="cron-expression"
+                  placeholder="如: */5 * * * * (每5分钟)"
+                  value={form.values.cron_expression || ''}
+                  onChange={(e) => form.updateValue('cron_expression', e.target.value)}
+                  className={form.errors.cron_expression ? 'border-red-500' : ''}
+                />
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="task-description">任务描述</Label>
-                  <Input
-                    id="task-description"
-                    placeholder="输入任务描述（可选）"
-                    value={form.values.description || ''}
-                    onChange={(e) => form.updateValue('description', e.target.value)}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-description">任务描述</Label>
+              <Input
+                id="task-description"
+                placeholder="输入任务描述（可选）"
+                value={form.values.description || ''}
+                onChange={(e) => form.updateValue('description', e.target.value)}
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="task-command">执行命令 <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="task-command"
-                    placeholder="输入要执行的命令"
-                    value={form.values.command || ''}
-                    onChange={(e) => form.updateValue('command', e.target.value)}
-                    className={form.errors.command ? 'border-red-500' : ''}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-command">执行命令 <span className="text-red-500">*</span></Label>
+              <Input
+                id="task-command"
+                placeholder="输入要执行的命令"
+                value={form.values.command || ''}
+                onChange={(e) => form.updateValue('command', e.target.value)}
+                className={form.errors.command ? 'border-red-500' : ''}
+              />
+            </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="task-timeout">超时时间（秒）</Label>
-                    <Input
-                      id="task-timeout"
-                      type="number"
-                      placeholder="3600"
-                      value={form.values.timeout || 3600}
-                      onChange={(e) => form.updateValue('timeout', parseInt(e.target.value) || 3600)}
-                    />
-                  </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="task-timeout">超时时间（秒）</Label>
+                <Input
+                  id="task-timeout"
+                  type="number"
+                  placeholder="3600"
+                  value={form.values.timeout || 3600}
+                  onChange={(e) => form.updateValue('timeout', parseInt(e.target.value) || 3600)}
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="retry-count">重试次数</Label>
-                    <Input
-                      id="retry-count"
-                      type="number"
-                      placeholder="0"
-                      value={form.values.retry_count || 0}
-                      onChange={(e) => form.updateValue('retry_count', parseInt(e.target.value) || 0)}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="retry-count">重试次数</Label>
+                <Input
+                  id="retry-count"
+                  type="number"
+                  placeholder="0"
+                  value={form.values.retry_count || 0}
+                  onChange={(e) => form.updateValue('retry_count', parseInt(e.target.value) || 0)}
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="retry-interval">重试间隔（秒）</Label>
-                    <Input
-                      id="retry-interval"
-                      type="number"
-                      placeholder="60"
-                      value={form.values.retry_interval || 60}
-                      onChange={(e) => form.updateValue('retry_interval', parseInt(e.target.value) || 60)}
-                    />
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="retry-interval">重试间隔（秒）</Label>
+                <Input
+                  id="retry-interval"
+                  type="number"
+                  placeholder="60"
+                  value={form.values.retry_interval || 60}
+                  onChange={(e) => form.updateValue('retry_interval', parseInt(e.target.value) || 60)}
+                />
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="task-active"
-                      checked={form.values.is_active !== false}
-                      onChange={(e) => form.updateValue('is_active', e.target.checked)}
-                      className="rounded border-input"
-                    />
-                    <label htmlFor="task-active" className="text-sm">
-                      任务启用
-                    </label>
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="task-active"
+                  checked={form.values.is_active !== false}
+                  onChange={(e) => form.updateValue('is_active', e.target.checked)}
+                  className="rounded border-input"
+                />
+                <label htmlFor="task-active" className="text-sm">
+                  任务启用
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={formDialog.closeDialog} disabled={saving}>
+              取消
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  保存中...
+                </>
+              ) : (
+                formDialog.data ? '更新任务' : '保存任务'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={formDialog.closeDialog} disabled={saving}>
-            取消
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                保存中...
-              </>
-            ) : (
-              formDialog.data ? '更新任务' : '保存任务'
-            )}
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       <Card>
@@ -272,21 +272,20 @@ export default function Tasks() {
               <Tooltip content="筛选任务状态">
                 <Select
                   id="status-filter"
-                  value={statusFilter === '' ? '' : statusFilter ? 'true' : 'false'}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setStatusFilter(value === '' ? '' : value === 'true')
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value)
                     setCurrentPage(1)
                   }}
                   options={[
-                    { value: '', label: '全部状态' },
+                    { value: 'all', label: '全部状态' },
                     { value: 'true', label: '启用' },
                     { value: 'false', label: '禁用' },
                   ]}
                   className="min-w-[120px]"
                 />
               </Tooltip>
-              <div className="relative w-64">
+              <div className="relative w-80">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Tooltip content="搜索任务">
                   <Input
@@ -305,9 +304,7 @@ export default function Tasks() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
+            <LoadingSpinner />
           ) : (
             <>
               <Table>
@@ -379,11 +376,7 @@ export default function Tasks() {
                   ))}
                 </TableBody>
               </Table>
-              {tasks.length === 0 && !loading && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">没有找到任务</p>
-                </div>
-              )}
+              {tasks.length === 0 && <EmptyState message="没有找到任务" />}
               
               <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             </>
@@ -393,24 +386,22 @@ export default function Tasks() {
 
       <ConfirmDialog
         open={deleteDialog.open}
-        onClose={deleteDialog.closeDialog}
+        onOpenChange={deleteDialog.closeDialog}
         onConfirm={handleDelete}
         title="确认删除"
-        message="确定要删除这个任务吗？"
+        description="确定要删除这个任务吗？"
         confirmText="删除"
         cancelText="取消"
-        loading={deleting}
       />
 
       <ConfirmDialog
         open={executeDialog.open}
-        onClose={executeDialog.closeDialog}
+        onOpenChange={executeDialog.closeDialog}
         onConfirm={handleExecute}
         title="确认执行"
-        message="确定要立即执行这个任务吗？"
+        description="确定要立即执行这个任务吗？"
         confirmText="执行"
         cancelText="取消"
-        loading={executing}
       />
     </div>
   )

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import QRCode from 'qrcode'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
+import { 
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Button, Input, Label,
+  Tabs, TabsContent, TabsList, TabsTrigger
+} from '../lib/components'
 import { Shield, Bell, Key, Edit, Save } from 'lucide-react'
 import {
   getTwoFactorAuthInfo,
@@ -14,10 +15,9 @@ import {
   type NotifyType,
   type NotificationListItem
 } from '../api'
-import { message } from '../components/ui/message'
+import { message } from '../lib/message'
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<'2fa' | 'notifications' | 'password'>('2fa')
   const [loading, setLoading] = useState(true)
 
   // 2FA 状态
@@ -246,317 +246,299 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* 标签页导航 */}
-      <div className="flex gap-2 border-b">
-        <button
-          onClick={() => setActiveTab('2fa')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === '2fa'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Shield className="inline w-4 h-4 mr-2" />
-          双因素认证
-        </button>
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'notifications'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Bell className="inline w-4 h-4 mr-2" />
-          通知配置
-        </button>
-        <button
-          onClick={() => setActiveTab('password')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'password'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Key className="inline w-4 h-4 mr-2" />
-          修改密码
-        </button>
-      </div>
+      <Tabs defaultValue="2fa" className="w-full">
+        <TabsList>
+          <TabsTrigger value="2fa">
+            <Shield className="w-4 h-4 mr-2" />
+            双因素认证
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="w-4 h-4 mr-2" />
+            通知配置
+          </TabsTrigger>
+          <TabsTrigger value="password">
+            <Key className="w-4 h-4 mr-2" />
+            修改密码
+          </TabsTrigger>
+        </TabsList>
 
-      {/* 2FA 设置 */}
-      {activeTab === '2fa' && twoFactorInfo && (
-        <Card>
-          <CardHeader>
-            <CardTitle>双因素认证 (2FA)</CardTitle>
-            <CardDescription>
-              使用 TOTP 应用程序（如 Google Authenticator）扫描下方二维码来启用双因素认证
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="text-sm font-medium mb-2">当前状态:</div>
-              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                twoFactorInfo.is_2fa_enabled
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-              }`}>
-                {twoFactorInfo.is_2fa_enabled ? '已启用' : '未启用'}
-              </div>
-            </div>
-
-            {!twoFactorInfo.is_2fa_enabled && (
-              <>
-                  <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Secret Key:</Label>
-                    <Input
-                      value={twoFactorInfo.totp_secret_key}
-                      readOnly
-                      className="font-mono text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="bg-white rounded-lg inline-block">
-                      <canvas ref={qrCodeRef} />
-                    </div>
+        {/* 2FA 设置 */}
+        <TabsContent value="2fa">
+          {twoFactorInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle>双因素认证 (2FA)</CardTitle>
+                <CardDescription>
+                  使用 TOTP 应用程序（如 Google Authenticator）扫描下方二维码来启用双因素认证
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm font-medium mb-2">当前状态:</div>
+                  <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    twoFactorInfo.is_2fa_enabled
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                  }`}>
+                    {twoFactorInfo.is_2fa_enabled ? '已启用' : '未启用'}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="totp-code">输入验证码以启用:</Label>
-                  <Input
-                    id="totp-code"
-                    type="text"
-                    placeholder="输入 6 位验证码"
-                    value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value)}
-                    maxLength={6}
-                    className="w-48"
-                  />
-                </div>
-
-                <Button onClick={handleEnable2FA} disabled={!totpCode || enabling2FA}>
-                  {enabling2FA ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                      启用中...
-                    </>
-                  ) : (
-                    '启用 2FA'
-                  )}
-                </Button>
-              </>
-            )}
-
-            {twoFactorInfo.is_2fa_enabled && (
-              <Button onClick={handleDisable2FA} variant="outline" disabled={disabling2FA}>
-                {disabling2FA ? (
+                {!twoFactorInfo.is_2fa_enabled && (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                    禁用中...
-                  </>
-                ) : (
-                  '禁用 2FA'
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Secret Key:</Label>
+                        <Input
+                          value={twoFactorInfo.totp_secret_key}
+                          readOnly
+                          className="font-mono text-sm"
+                        />
+                      </div>
 
-      {/* 通知配置 */}
-      {activeTab === 'notifications' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>通知配置</CardTitle>
-            <CardDescription>
-              管理任务执行完成后的通知方式
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {notificationError && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                  {notificationError}
-                </div>
-              )}
-
-              {Object.entries(notifications).map(([type, config]: [string, NotificationListItem]) => (
-                <div key={type} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium capitalize">{type}</h3>
-                    {!editingNotification && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditNotification(type)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        编辑
-                      </Button>
-                    )}
-                  </div>
-
-                  {editingNotification === type ? (
-                    <div className="space-y-3">
-                      {type === 'webhook' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="webhook-url">Webhook URL</Label>
-                          <Input
-                            id="webhook-url"
-                            placeholder="https://example.com/webhook"
-                            value={notificationForm.url || ''}
-                            onChange={(e) => setNotificationForm({ ...notificationForm, url: e.target.value })}
-                          />
+                      <div>
+                        <div className="bg-white rounded-lg inline-block">
+                          <canvas ref={qrCodeRef} />
                         </div>
-                      )}
-
-                      {type === 'telegram' && (
-                        <>
-                          <div className="space-y-2">
-                            <Label htmlFor="telegram-bot-token">Bot Token</Label>
-                            <Input
-                              id="telegram-bot-token"
-                              placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                              value={notificationForm.bot_token || ''}
-                              onChange={(e) => setNotificationForm({ ...notificationForm, bot_token: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="telegram-chat-id">Chat ID</Label>
-                            <Input
-                              id="telegram-chat-id"
-                              placeholder="-123456789"
-                              value={notificationForm.chat_id || ''}
-                              onChange={(e) => setNotificationForm({ ...notificationForm, chat_id: e.target.value })}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {type === 'dingtalk' && (
-                        <>
-                          <div className="space-y-2">
-                            <Label htmlFor="dingtalk-webhook-url">Webhook URL</Label>
-                            <Input
-                              id="dingtalk-webhook-url"
-                              placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx"
-                              value={notificationForm.webhook_url || ''}
-                              onChange={(e) => setNotificationForm({ ...notificationForm, webhook_url: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="dingtalk-secret">Secret</Label>
-                            <Input
-                              id="dingtalk-secret"
-                              placeholder="SECxxxxxxxxxxxxxxxxxxxxxxxx"
-                              value={notificationForm.secret || ''}
-                              onChange={(e) => setNotificationForm({ ...notificationForm, secret: e.target.value })}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button onClick={handleSaveNotification} disabled={notificationSaving}>
-                          {notificationSaving ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                              保存中...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-4 h-4 mr-1" />
-                              保存
-                            </>
-                          )}
-                        </Button>
-                        <Button onClick={handleCancelEdit} variant="outline" disabled={notificationSaving}>
-                          取消
-                        </Button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      {type === 'webhook' && <div>URL: {config.url || '未配置'}</div>}
-                      {type === 'telegram' && (
+
+                    <div className="space-y-2">
+                      <Label htmlFor="totp-code">输入验证码以启用:</Label>
+                      <Input
+                        id="totp-code"
+                        type="text"
+                        placeholder="输入 6 位验证码"
+                        value={totpCode}
+                        onChange={(e) => setTotpCode(e.target.value)}
+                        maxLength={6}
+                        className="w-48"
+                      />
+                    </div>
+
+                    <Button onClick={handleEnable2FA} disabled={!totpCode || enabling2FA}>
+                      {enabling2FA ? (
                         <>
-                          <div>Bot Token: {config.bot_token ? '已配置' : '未配置'}</div>
-                          <div>Chat ID: {config.chat_id || '未配置'}</div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          启用中...
                         </>
+                      ) : (
+                        '启用 2FA'
                       )}
-                      {type === 'dingtalk' && (
-                        <>
-                          <div>Webhook URL: {config.webhook_url ? '已配置' : '未配置'}</div>
-                          <div>Secret: {config.secret ? '已配置' : '未配置'}</div>
-                        </>
+                    </Button>
+                  </>
+                )}
+
+                {twoFactorInfo.is_2fa_enabled && (
+                  <Button onClick={handleDisable2FA} variant="outline" disabled={disabling2FA}>
+                    {disabling2FA ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                        禁用中...
+                      </>
+                    ) : (
+                      '禁用 2FA'
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* 通知配置 */}
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>通知配置</CardTitle>
+              <CardDescription>
+                管理任务执行完成后的通知方式
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {notificationError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                    {notificationError}
+                  </div>
+                )}
+
+                {Object.entries(notifications).map(([type, config]: [string, NotificationListItem]) => (
+                  <div key={type} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium capitalize">{type}</h3>
+                      {!editingNotification && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditNotification(type)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          编辑
+                        </Button>
                       )}
                     </div>
-                  )}
-                </div>
-              ))}
 
-              {Object.keys(notifications).length === 0 && (
-                <p className="text-muted-foreground text-center py-8">暂无通知配置</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                    {editingNotification === type ? (
+                      <div className="space-y-3">
+                        {type === 'webhook' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="webhook-url">Webhook URL</Label>
+                            <Input
+                              id="webhook-url"
+                              placeholder="https://example.com/webhook"
+                              value={notificationForm.url || ''}
+                              onChange={(e) => setNotificationForm({ ...notificationForm, url: e.target.value })}
+                            />
+                          </div>
+                        )}
 
-      {/* 修改密码 */}
-      {activeTab === 'password' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>修改密码</CardTitle>
-            <CardDescription>
-              为了安全起见，建议定期更换密码
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-              {passwordError && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                  {passwordError}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="new-password">新密码</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="输入新密码"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">确认新密码</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="再次输入新密码"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={changingPassword}>
-                {changingPassword ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                    修改中...
-                  </>
-                ) : (
-                  '修改密码'
+                        {type === 'telegram' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="telegram-bot-token">Bot Token</Label>
+                              <Input
+                                id="telegram-bot-token"
+                                placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                                value={notificationForm.bot_token || ''}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, bot_token: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="telegram-chat-id">Chat ID</Label>
+                              <Input
+                                id="telegram-chat-id"
+                                placeholder="-123456789"
+                                value={notificationForm.chat_id || ''}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, chat_id: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {type === 'dingtalk' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="dingtalk-webhook-url">Webhook URL</Label>
+                              <Input
+                                id="dingtalk-webhook-url"
+                                placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx"
+                                value={notificationForm.webhook_url || ''}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, webhook_url: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="dingtalk-secret">Secret</Label>
+                              <Input
+                                id="dingtalk-secret"
+                                placeholder="SECxxxxxxxxxxxxxxxxxxxxxxxx"
+                                value={notificationForm.secret || ''}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, secret: e.target.value })}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button onClick={handleSaveNotification} disabled={notificationSaving}>
+                            {notificationSaving ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                                保存中...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4 mr-1" />
+                                保存
+                              </>
+                            )}
+                          </Button>
+                          <Button onClick={handleCancelEdit} variant="outline" disabled={notificationSaving}>
+                            取消
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        {type === 'webhook' && <div>URL: {config.url || '未配置'}</div>}
+                        {type === 'telegram' && (
+                          <>
+                            <div>Bot Token: {config.bot_token ? '已配置' : '未配置'}</div>
+                            <div>Chat ID: {config.chat_id || '未配置'}</div>
+                          </>
+                        )}
+                        {type === 'dingtalk' && (
+                          <>
+                            <div>Webhook URL: {config.webhook_url ? '已配置' : '未配置'}</div>
+                            <div>Secret: {config.secret ? '已配置' : '未配置'}</div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {Object.keys(notifications).length === 0 && (
+                  <p className="text-muted-foreground text-center py-8">暂无通知配置</p>
                 )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 修改密码 */}
+        <TabsContent value="password">
+          <Card>
+            <CardHeader>
+              <CardTitle>修改密码</CardTitle>
+              <CardDescription>
+                为了安全起见，建议定期更换密码
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                {passwordError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                    {passwordError}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">新密码</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="输入新密码"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">确认新密码</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="再次输入新密码"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" disabled={changingPassword}>
+                  {changingPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                      修改中...
+                    </>
+                  ) : (
+                    '修改密码'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -8,15 +8,20 @@ from src.utils import error_response
 class AuthMiddleware(BaseHTTPMiddleware):
     """Authentication middleware for protected routes"""
 
-    EXCLUDED_PATHS = ["/", "/api/auth/login"]
+    # 不需要认证的 API 路径
+    EXCLUDED_API_PATHS = ["/api/auth/login"]
 
     async def dispatch(self, request: Request, call_next):
         # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Skip authentication for excluded paths
-        if request.url.path in self.EXCLUDED_PATHS:
+        # 只对 /api 开头的路径进行认证检查
+        if not request.url.path.startswith("/api"):
+            return await call_next(request)
+
+        # 跳过不需要认证的 API 路径
+        if request.url.path in self.EXCLUDED_API_PATHS:
             return await call_next(request)
 
         # Get token from Authorization header

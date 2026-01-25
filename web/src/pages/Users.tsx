@@ -1,16 +1,11 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Avatar, AvatarFallback } from '../components/ui/avatar'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+import { 
+  Card, CardContent, CardHeader, CardTitle,
+  Button, Input, Avatar, AvatarFallback,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '../lib/components'
 import { Search, Plus, MoreHorizontal, Shield, ShieldCheck, Trash2 } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu'
 
 interface User {
   id: number
@@ -33,7 +28,7 @@ const mockUsers: User[] = [
 const roleMap = {
   admin: { label: '管理员', icon: Shield, className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
   editor: { label: '编辑', icon: ShieldCheck, className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  user: { label: '普通用户', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
+  user: { label: '普通用户', icon: undefined, className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
 }
 
 const statusMap = {

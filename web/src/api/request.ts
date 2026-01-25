@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { getBaseUrl } from './config'
-import { message } from '../components/ui/message'
+import { message } from '../lib/message'
 
 export interface RequestConfig {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'

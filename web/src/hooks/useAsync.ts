@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { message } from '../components/ui/message'
+import { message } from '../lib/message'
 
 /**
  * 通用异步操作 Hook
