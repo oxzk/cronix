@@ -28,6 +28,12 @@ class UserSchema(BaseModel):
     totp_secret_key: Optional[str] = None
 
 
+class UserLoginSchema(BaseModel):
+    username: str
+    password: str
+    totp_code: Optional[str] = None
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

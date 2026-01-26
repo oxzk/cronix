@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from datetime import timedelta
 from sqlalchemy import select
-from src.models import UserSchema, Token, User
+from src.models import UserSchema, UserLoginSchema, Token, User
 from src.services import (
     get_password_hash,
     verify_password,
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login")
-async def login(user_data: UserSchema) -> dict:
+async def login(user_data: UserLoginSchema) -> dict:
     # Validate required login fields
     if not user_data.username or not user_data.password:
         return error_response(message="Username and password are required", code=400)
@@ -43,7 +43,17 @@ async def login(user_data: UserSchema) -> dict:
             data={"sub": user.username}, expires_delta=access_token_expires
         )
 
+        user_response_data = {
+            "id": user.id,
+            "username": user.username,
+            "is_2fa_enabled": user.is_2fa_enabled,
+        }
+
         return success_response(
-            data={"access_token": access_token, "token_type": "bearer"},
+            data={
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user_data": user_response_data,
+            },
             message="Login successful",
         )

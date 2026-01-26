@@ -52,7 +52,7 @@ app = FastAPI(
     title=settings.app_name,
     lifespan=lifespan,
     docs_url=None,
-    openapi_url=None,
+    # openapi_url=None,
     redirect_slashes=False,
     debug=settings.app_debug,
     version=__version__,
@@ -73,10 +73,21 @@ app.add_middleware(AuthMiddleware)
 
 
 # Global exception handler for all exceptions
+@app.exception_handler(StarletteHTTPException)
 @app.exception_handler(RequestValidationError)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Unified exception handler for all exceptions"""
+
+    # Handle HTTP exceptions
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=error_response(
+                message=exc.detail,
+                code=exc.status_code,
+            ),
+        )
 
     # Handle validation errors
     if isinstance(exc, RequestValidationError):

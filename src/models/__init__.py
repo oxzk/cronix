@@ -1,5 +1,6 @@
 from .schemas import (
     UserSchema,
+    UserLoginSchema,
     Token,
     TaskSchema,
     TaskResponse,
@@ -20,6 +21,7 @@ from .tables import (
 
 __all__ = [
     "UserSchema",
+    "UserLoginSchema",
     "Token",
     "TaskSchema",
     "TaskResponse",
