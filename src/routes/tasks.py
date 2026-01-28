@@ -61,6 +61,7 @@ async def _build_task_response(task: Task, session: Session) -> TaskResponse:
         retry_count=task.retry_count,
         retry_interval=task.retry_interval,
         notifications=notifications if notifications else None,
+        notify_strategy=task.notify_strategy,
         next_run_time=task.next_run_time,
         created_at=task.created_at,
         updated_at=task.updated_at,
@@ -144,6 +145,7 @@ async def create_task(task_data: TaskSchema, request: Request) -> dict:
             retry_count=task_data.retry_count,
             retry_interval=task_data.retry_interval,
             notification_ids=task_data.notification_ids,
+            notify_strategy=task_data.notify_strategy,
             next_run_time=_calculate_next_run_time(task_data.cron_expression),
         )
         session.add(new_task)

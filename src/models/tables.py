@@ -100,6 +100,12 @@ class Task(Base):
         nullable=True,
         comment="List of notification IDs (null = no notifications)",
     )
+    notify_strategy = Column(
+        String(20),
+        nullable=False,
+        default="never",
+        comment="Notification strategy (never/always/on_failure)",
+    )
     next_run_time = Column(
         TIMESTAMP(timezone=True),
         nullable=True,
@@ -159,5 +165,54 @@ class TaskExecution(Base):
             f"idx_{TABLE_PREFIX}task_executions_started_at",
             "started_at",
             postgresql_ops={"started_at": "DESC"},
+        ),
+    )
+
+
+class Dependency(Base):
+    __tablename__ = f"{TABLE_PREFIX}dependencies"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="Dependency ID")
+    dependency_type = Column(
+        String(20),
+        nullable=False,
+        comment="Dependency type (python/node)",
+    )
+    package_name = Column(String(255), nullable=False, comment="Package name")
+    version = Column(String(50), nullable=True, comment="Package version (optional)")
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        comment="Installation status (pending/installing/installed/failed)",
+    )
+    installed_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        comment="Installation completion time",
+    )
+    error_message = Column(
+        Text, nullable=True, comment="Error message if installation failed"
+    )
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        comment="Creation timestamp",
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="Last update timestamp",
+    )
+
+    __table_args__ = (
+        Index(f"idx_{TABLE_PREFIX}dependencies_type", "dependency_type"),
+        Index(f"idx_{TABLE_PREFIX}dependencies_status", "status"),
+        Index(
+            f"idx_{TABLE_PREFIX}dependencies_type_package",
+            "dependency_type",
+            "package_name",
+            unique=True,
         ),
     )

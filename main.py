@@ -17,6 +17,8 @@ from src.routes import (
     settings_router,
     executions_router,
     scripts_router,
+    stats_router,
+    dependencies_router,
 )
 from src.services.scheduler import scheduler
 from src.services.auth import initialize_admin_user
@@ -123,6 +125,8 @@ for router in [
     settings_router,
     executions_router,
     scripts_router,
+    stats_router,
+    dependencies_router,
 ]:
     app.include_router(router, prefix="/api")
 

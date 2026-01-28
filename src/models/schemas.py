@@ -20,6 +20,12 @@ class NotifyType(str, Enum):
     DINGTALK = "dingtalk"
 
 
+class NotifyStrategy(str, Enum):
+    NEVER = "never"
+    ALWAYS = "always"
+    ON_FAILURE = "on_failure"
+
+
 class UserSchema(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
@@ -106,6 +112,10 @@ class TaskSchema(BaseModel):
     retry_count: int = Field(default=0, ge=0, le=5)  # Maximum 5 retries
     retry_interval: int = Field(default=60, ge=1, le=600)  # 1 second to 10 minutes
     notification_ids: Optional[List[int]] = None  # Notification configuration ID list
+    notify_strategy: NotifyStrategy = Field(
+        default=NotifyStrategy.NEVER,
+        description="Notification strategy: never, always, or on_failure",
+    )
 
     @field_validator("cron_expression")
     @classmethod
@@ -137,6 +147,7 @@ class TaskResponse(BaseModel):
     notifications: Optional[List[NotificationResponse]] = (
         None  # Associated notification configurations
     )
+    notify_strategy: NotifyStrategy
     next_run_time: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -165,3 +176,93 @@ class TaskExecutionDetailResponse(BaseModel):
     error: Optional[str]
     retry_attempt: int
     duration: Optional[int] = None
+
+
+class ScriptSchema(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    content: str
+
+
+class ScriptResponse(BaseModel):
+    name: str
+    type: str
+    content: str
+    path: str
+
+
+class ScriptListItem(BaseModel):
+    name: str
+    type: str
+    path: str
+
+
+class ScriptTreeNode(BaseModel):
+    name: str
+    type: str  # "file" or "directory"
+    path: str
+    script_type: Optional[str] = None
+    children: Optional[List["ScriptTreeNode"]] = None
+
+
+class ScriptExecutionRequest(BaseModel):
+    args: Optional[List[str]] = Field(
+        default_factory=list, description="Script arguments"
+    )
+    timeout: Optional[int] = Field(
+        default=300, ge=1, le=3600, description="Timeout in seconds"
+    )
+
+
+class ScriptExecutionResponse(BaseModel):
+    script_path: str
+    status: str
+    output: Optional[str] = None
+    error: Optional[str] = None
+    exit_code: Optional[int] = None
+    duration: Optional[float] = None
+    started_at: datetime
+    finished_at: Optional[datetime] = None
+
+
+class ScriptStatsResponse(BaseModel):
+    total_scripts: int
+    by_type: dict
+    total_size_bytes: int
+
+
+class TaskStatsResponse(BaseModel):
+    total_tasks: int
+    active_tasks: int
+    inactive_tasks: int
+    total_executions: int
+    success_executions: int
+    failed_executions: int
+    running_executions: int
+    success_rate: Optional[float] = None
+
+
+class DependencyStatus(str, Enum):
+    PENDING = "pending"
+    INSTALLING = "installing"
+    INSTALLED = "installed"
+    FAILED = "failed"
+
+
+class DependencySchema(BaseModel):
+    dependency_type: str = Field(..., description="Dependency type: python or node")
+    package_name: str = Field(..., min_length=1, max_length=255)
+    version: Optional[str] = Field(
+        None, max_length=50, description="Package version (optional)"
+    )
+
+
+class DependencyResponse(BaseModel):
+    id: int
+    dependency_type: str
+    package_name: str
+    version: Optional[str]
+    status: DependencyStatus
+    installed_at: Optional[datetime]
+    error_message: Optional[str]
+    created_at: datetime
+    updated_at: datetime

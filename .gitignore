@@ -5,7 +5,7 @@ __pycache__/
 .venv
 .kiro/
 logs/
-data/code/*
-!data/code/.gitkeep
+data/scripts/*
+!data/scripts/.gitkeep
 public/*
 !public/.gitkeep

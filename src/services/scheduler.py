@@ -298,7 +298,22 @@ class TaskScheduler:
             await self._handle_retry(task, retry_attempt, f"error: {e}")
 
     async def _send_notifications(self, task: Task, status: str, output: str) -> None:
-        """Send task notifications"""
+        """Send task notifications based on notify_strategy"""
+        # Check notification strategy
+        notify_strategy = getattr(task, "notify_strategy", "never")
+
+        # Determine if notification should be sent
+        should_notify = False
+        if notify_strategy == "always":
+            should_notify = True
+        elif notify_strategy == "on_failure":
+            # Send notification only on failure, timeout, or cancelled
+            should_notify = status in ["failed", "timeout", "cancelled"]
+        # If notify_strategy is "never", should_notify remains False
+
+        if not should_notify:
+            return
+
         if not task.notification_ids:
             return  # No notifications configured, return early
 
