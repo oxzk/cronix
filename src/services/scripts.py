@@ -8,7 +8,7 @@ class ScriptService:
     """Script management service"""
 
     _instance = None
-    _script_dir = Path(__FILE__).parent.parent.parent / "data/scripts"
+    _script_dir = Path(__file__).parent.parent.parent / "data/scripts"
 
     def __new__(cls):
         if cls._instance is None:

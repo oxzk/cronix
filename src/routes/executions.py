@@ -80,6 +80,7 @@ async def list_executions(
                     timeout=task.timeout,
                     retry_count=task.retry_count,
                     retry_interval=task.retry_interval,
+                    notify_strategy=task.notify_strategy,
                     next_run_time=task.next_run_time,
                     created_at=task.created_at,
                     updated_at=task.updated_at,
@@ -130,6 +131,25 @@ async def get_execution(execution_id: int, request: Request) -> dict:
 
         task_response = None
         if task:
+            # Fetch notifications if task has notification_ids
+            notifications = []
+            if task.notification_ids:
+                notifications_result = await session.execute(
+                    select(Notification).where(
+                        Notification.id.in_(task.notification_ids)
+                    )
+                )
+                notifications = [
+                    NotificationResponse(
+                        id=n.id,
+                        notify_type=n.notify_type,
+                        config=n.config,
+                        created_at=n.created_at,
+                        updated_at=n.updated_at,
+                    )
+                    for n in notifications_result.scalars().all()
+                ]
+
             task_response = TaskResponse(
                 id=task.id,
                 name=task.name,
@@ -140,6 +160,8 @@ async def get_execution(execution_id: int, request: Request) -> dict:
                 timeout=task.timeout,
                 retry_count=task.retry_count,
                 retry_interval=task.retry_interval,
+                notifications=notifications if notifications else None,
+                notify_strategy=task.notify_strategy,
                 next_run_time=task.next_run_time,
                 created_at=task.created_at,
                 updated_at=task.updated_at,

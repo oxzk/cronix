@@ -167,14 +167,14 @@ def health() -> dict:
     )
 
 
-app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
+# app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
 
 
-@app.get("/")
-def index():
-    return FileResponse("public/index.html")
+# @app.get("/")
+# def index():
+#     return FileResponse("public/index.html")
 
 
-@app.get("/{path:path}")
-def spa(path: str):
-    return FileResponse("public/index.html")
+# @app.get("/{path:path}")
+# def spa(path: str):
+#     return FileResponse("public/index.html")
