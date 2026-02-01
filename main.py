@@ -60,7 +60,10 @@ app = FastAPI(
     version=__version__,
 )
 
-# Add CORS middleware first
+# Add authentication middleware first (will be executed last in request chain)
+app.add_middleware(AuthMiddleware)
+
+# Add CORS middleware last (will be executed first, wrapping all other middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, replace with specific origins
@@ -69,9 +72,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-# Add authentication middleware
-app.add_middleware(AuthMiddleware)
 
 
 # Global exception handler for all exceptions

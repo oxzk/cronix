@@ -144,9 +144,7 @@ class TaskResponse(BaseModel):
     timeout: int
     retry_count: int
     retry_interval: int
-    notifications: Optional[List[NotificationResponse]] = (
-        None  # Associated notification configurations
-    )
+    notification_ids: Optional[List[int]] = None  # Notification configuration ID list
     notify_strategy: NotifyStrategy
     next_run_time: Optional[datetime] = None
     created_at: datetime

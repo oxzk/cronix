@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Query
 from typing import List, Optional
 from sqlalchemy import select, update, delete, func
-from sqlalchemy.orm import selectinload, Session
+from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from croniter import croniter
 import json
@@ -13,8 +13,6 @@ from src.models import (
     TaskExecution,
     User,
     Notification,
-    NotificationResponse,
-    NotifyType,
 )
 from src.databases import db
 from src.utils import success_response, error_response
@@ -32,24 +30,7 @@ def _calculate_next_run_time(cron_expression: str) -> datetime:
 
 
 async def _build_task_response(task: Task, session: Session) -> TaskResponse:
-    """Helper function to build TaskResponse with notifications"""
-    notifications = []
-    if task.notification_ids:
-        result = await session.execute(
-            select(Notification).where(Notification.id.in_(task.notification_ids))
-        )
-        notifs = result.scalars().all()
-        notifications = [
-            NotificationResponse(
-                id=n.id,
-                notify_type=NotifyType(n.notify_type),
-                config=n.config,
-                created_at=n.created_at,
-                updated_at=n.updated_at,
-            )
-            for n in notifs
-        ]
-
+    """Helper function to build TaskResponse"""
     return TaskResponse(
         id=task.id,
         name=task.name,
@@ -60,7 +41,7 @@ async def _build_task_response(task: Task, session: Session) -> TaskResponse:
         timeout=task.timeout,
         retry_count=task.retry_count,
         retry_interval=task.retry_interval,
-        notifications=notifications if notifications else None,
+        notification_ids=task.notification_ids,
         notify_strategy=task.notify_strategy,
         next_run_time=task.next_run_time,
         created_at=task.created_at,
