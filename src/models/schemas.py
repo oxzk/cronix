@@ -264,3 +264,19 @@ class DependencyResponse(BaseModel):
     error_message: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+
+class GitCloneRequest(BaseModel):
+    repo_url: str = Field(..., min_length=1, description="Git repository URL")
+    target_dir: Optional[str] = Field(
+        None, description="Target directory name (optional, defaults to repo name)"
+    )
+    branch: Optional[str] = Field(None, description="Branch to clone (optional)")
+
+
+class GitCloneResponse(BaseModel):
+    success: bool
+    message: str
+    target_path: Optional[str] = None
+    repo_url: str
+    branch: Optional[str] = None

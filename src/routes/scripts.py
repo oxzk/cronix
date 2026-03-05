@@ -7,6 +7,8 @@ from src.models.schemas import (
     ScriptTreeNode,
     ScriptExecutionRequest,
     ScriptExecutionResponse,
+    GitCloneRequest,
+    GitCloneResponse,
 )
 
 
@@ -104,4 +106,21 @@ async def run_script(
     exit_code = result.get("exit_code", 0)
     return success_response(
         data=result, message=f"Script executed with exit code {exit_code}"
+    )
+
+
+@router.post("/git/clone")
+async def clone_git_repo(clone_request: GitCloneRequest, request: Request):
+    """Clone a git repository into the scripts directory"""
+    result = await script_service.clone_git_repo(
+        clone_request.repo_url, clone_request.target_dir, clone_request.branch
+    )
+
+    if not result.get("success"):
+        return error_response(
+            message=result.get("message", "Clone failed"), code=400, data=result
+        )
+
+    return success_response(
+        data=result, message=result.get("message", "Repository cloned successfully")
     )

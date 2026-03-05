@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 import asyncio
 from datetime import datetime
+import re
 
 
 class ScriptService:
@@ -410,6 +411,101 @@ class ScriptService:
             }
         except Exception as e:
             raise Exception(f"Failed to get stats: {str(e)}")
+
+    async def clone_git_repo(
+        self,
+        repo_url: str,
+        target_dir: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> dict:
+        """
+        Clone a git repository into the scripts directory
+        Returns: result dict with success status and details
+        """
+        try:
+            # Extract repo name from URL if target_dir not provided
+            if not target_dir:
+                # Extract repo name from URL (e.g., https://github.com/user/repo.git -> repo)
+                match = re.search(r"/([^/]+?)(\.git)?$", repo_url)
+                if match:
+                    target_dir = match.group(1)
+                else:
+                    return {
+                        "success": False,
+                        "message": "Could not extract repository name from URL",
+                        "repo_url": repo_url,
+                    }
+
+            # Validate target directory name
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", target_dir):
+                return {
+                    "success": False,
+                    "message": "Invalid target directory name. Use only alphanumeric characters, underscores, and hyphens",
+                    "repo_url": repo_url,
+                }
+
+            target_path = self.script_dir / target_dir
+
+            # Check if target directory already exists
+            if target_path.exists():
+                return {
+                    "success": False,
+                    "message": f"Directory '{target_dir}' already exists",
+                    "repo_url": repo_url,
+                    "target_path": str(target_path.relative_to(Path.cwd())),
+                }
+
+            # Build git clone command
+            command = ["git", "clone"]
+            if branch:
+                command.extend(["-b", branch])
+            command.extend([repo_url, str(target_path)])
+
+            # Execute git clone
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(self.script_dir),
+            )
+
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)
+
+            if process.returncode == 0:
+                return {
+                    "success": True,
+                    "message": f"Successfully cloned repository to '{target_dir}'",
+                    "target_path": str(target_path.relative_to(Path.cwd())),
+                    "repo_url": repo_url,
+                    "branch": branch,
+                }
+            else:
+                error_msg = stderr.decode("utf-8") if stderr else "Unknown error"
+                return {
+                    "success": False,
+                    "message": f"Failed to clone repository: {error_msg}",
+                    "repo_url": repo_url,
+                    "branch": branch,
+                }
+
+        except asyncio.TimeoutError:
+            return {
+                "success": False,
+                "message": "Git clone operation timed out after 300 seconds",
+                "repo_url": repo_url,
+            }
+        except FileNotFoundError:
+            return {
+                "success": False,
+                "message": "Git is not installed or not found in PATH",
+                "repo_url": repo_url,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Error during git clone: {str(e)}",
+                "repo_url": repo_url,
+            }
 
 
 # Singleton instance

@@ -6,8 +6,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import asyncio
-import uvicorn
-import os
 from pathlib import Path
 from src.config import settings
 from src.databases import db

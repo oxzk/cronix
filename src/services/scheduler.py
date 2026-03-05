@@ -122,6 +122,8 @@ class TaskScheduler:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         self.running_processes[task.id] = process
         try:
