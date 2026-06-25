@@ -1,0 +1,87 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Cronix Logo</title>
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="clockFace" x1="80" y1="80" x2="176" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#475569"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="handsGrad" x1="100" y1="100" x2="156" y2="156" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="64" fill="url(#bgGrad)"/>
+
+  <!-- Outer decorative ring -->
+  <circle cx="128" cy="128" r="90" stroke="#334155" stroke-width="3" fill="none" opacity="0.4" stroke-dasharray="12 8"/>
+
+  <!-- Middle ring -->
+  <circle cx="128" cy="128" r="74" stroke="#475569" stroke-width="6" fill="none" opacity="0.7"/>
+
+  <!-- Clock face -->
+  <circle cx="128" cy="128" r="58" fill="url(#clockFace)"/>
+
+  <!-- Hour markers (12 positions) -->
+  <g>
+    <!-- Primary markers (12, 3, 6, 9) -->
+    <circle cx="128" cy="74" r="4" fill="#E2E8F0"/>
+    <circle cx="182" cy="128" r="4" fill="#E2E8F0"/>
+    <circle cx="128" cy="182" r="4" fill="#E2E8F0"/>
+    <circle cx="74" cy="128" r="4" fill="#E2E8F0"/>
+
+    <!-- Secondary markers -->
+    <circle cx="153" cy="81" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="175" cy="103" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="175" cy="153" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="153" cy="175" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="103" cy="175" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="81" cy="153" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="81" cy="103" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+    <circle cx="103" cy="81" r="2.5" fill="#CBD5E1" opacity="0.8"/>
+  </g>
+
+  <!-- Clock hands with glow -->
+  <g filter="url(#glow)">
+    <line x1="128" y1="128" x2="128" y2="86" stroke="url(#handsGrad)" stroke-width="7" stroke-linecap="round"/>
+    <line x1="128" y1="128" x2="166" y2="128" stroke="url(#handsGrad)" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- Center circle -->
+  <circle cx="128" cy="128" r="9" fill="#64748B"/>
+  <circle cx="128" cy="128" r="5" fill="#E2E8F0"/>
+
+  <!-- Cron asterisk symbols in corners -->
+  <g opacity="0.5" stroke="#64748B" stroke-width="4" stroke-linecap="round">
+    <line x1="44" y1="44" x2="52" y2="52"/>
+    <line x1="212" y1="44" x2="204" y2="52"/>
+    <line x1="212" y1="212" x2="204" y2="204"/>
+    <line x1="44" y1="212" x2="52" y2="204"/>
+  </g>
+
+  <!-- Status indicators -->
+  <circle cx="202" cy="202" r="10" fill="#22C55E" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="54" cy="54" r="7" fill="#64748B" opacity="0.8"/>
+  <circle cx="202" cy="54" r="7" fill="#64748B" opacity="0.6"/>
+
+  <!-- Brand text -->
+  <text x="128" y="235" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="20" font-weight="600" fill="#E2E8F0" text-anchor="middle"
+        letter-spacing="5" opacity="0.9">
+    CRONIX
+  </text>
+</svg>

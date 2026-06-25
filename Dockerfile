@@ -1,19 +1,32 @@
-FROM node:22-slim
+FROM node:22-slim AS frontend-builder
 
-ENV PYTHONUNBUFFERED=1 \
-    UV_PYTHON_PREFERENCE=only-managed \
-    PATH="/app/.venv/bin:$HOME/.local/bin:$PATH"
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend ./
+RUN npm run build
+
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . .
+COPY --from=ghcr.io/astral-sh/uv:0.11.19 /uv /uvx /bin/
 
-RUN apt update && apt install git wget curl ca-certificates -y \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.bashrc" SHELL="$(which bash)" bash - \
-    && "$HOME/.local/bin/uv" python install 3.11 \
-    && "$HOME/.local/bin/uv" sync --no-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
 
-CMD ["sh", "-c", "fastapi run --proxy-headers --host 0.0.0.0 --port ${PORT:-8000}"]
+COPY pyproject.toml uv.lock README.md /app/
+RUN uv sync --locked --no-dev --no-install-project
+
+COPY src /app/src
+COPY --from=frontend-builder /app/frontend/dist /app/public
+
+RUN uv sync --locked --no-dev
+
+EXPOSE 8000
+
+CMD ["uvicorn", "cronix.main:app", "--host", "0.0.0.0", "--port", "8000"]
