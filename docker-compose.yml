@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cronix
+      POSTGRES_PASSWORD: cronix
+      POSTGRES_DB: cronix
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cronix"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    image: ghcr.io/oxzk/cronix:latest
+    environment:
+      # 容器内指向 db 服务
+      DATABASE__URL: postgresql+asyncpg://cronix:cronix@db:5432/cronix
+    ports:
+      - 8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver_opts:
+      size: 2Gi

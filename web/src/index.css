@@ -1,0 +1,101 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 设计 token: 与 kryva 对齐的单色 slate 体系 */
+@theme {
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --font-sans: "SF Pro Text", "SF Pro Display", "PingFang SC", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+}
+
+@keyframes caret-blink {
+    0%, 70%, 100% { opacity: 1; }
+    20%, 50% { opacity: 0; }
+}
+
+:root {
+    color-scheme: light;
+    --bg: #f6f7f9;
+    --ink: #111827;
+    --line: #e5e7eb;
+    --card: #ffffff;
+    font-family: "SF Pro Text", "SF Pro Display", "PingFang SC", "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--bg);
+
+    /* shadcn tokens: 复用现有 slate 配色 */
+    --background: #f6f7f9;
+    --foreground: #111827;
+    --card-foreground: #111827;
+    --popover: #ffffff;
+    --popover-foreground: #111827;
+    --primary: #0f172a;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f8fafc;
+    --muted-foreground: #64748b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
+    --destructive: #e11d48;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #0f172a;
+    --radius: 0.375rem;
+}
+
+@keyframes toast-progress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
+/* 可点击元素统一手型光标 */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='tab'],
+a,
+select,
+summary,
+label {
+    cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+    cursor: not-allowed;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+        radial-gradient(1200px 520px at 50% -160px, rgba(15, 23, 42, 0.06), transparent 62%),
+        var(--bg);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 细 slate 滚动条 */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+.surface {
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--card);
+}
